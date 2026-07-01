@@ -1,0 +1,185 @@
+{
+  "schema": 1,
+  "updated": "2026-06-29T16:16:04",
+  "preserve": [
+    {
+      "text": "130-A",
+      "note": "rule no. as printed",
+      "pages": [
+        298
+      ]
+    },
+    {
+      "text": "5827-F",
+      "note": "notification no. as printed",
+      "pages": [
+        298
+      ]
+    },
+    {
+      "text": "Air Craft",
+      "note": "two words as printed",
+      "pages": [
+        182
+      ]
+    },
+    {
+      "text": "APPENDIX – F",
+      "note": "spaced en-dash on this page; other appendix pages use 'APPENDIX-F'",
+      "pages": [
+        221
+      ]
+    },
+    {
+      "text": "archaelogical",
+      "note": "source spelling",
+      "pages": [
+        182
+      ]
+    },
+    {
+      "text": "Archieves",
+      "note": "archaic spelling in heading 178; body uses 'Archives'",
+      "pages": [
+        91
+      ]
+    },
+    {
+      "text": "Do...",
+      "note": "ditto placeholder; keep trailing dots verbatim",
+      "pages": [
+        298
+      ]
+    },
+    {
+      "text": "expeditions",
+      "note": "source spelling (cf. 'expedition') in the N.B. note",
+      "pages": [
+        240
+      ]
+    },
+    {
+      "text": "Gazetters",
+      "note": "source spelling (set in italic)",
+      "pages": [
+        141
+      ]
+    },
+    {
+      "text": "insectides",
+      "note": "source spelling",
+      "pages": [
+        182
+      ]
+    },
+    {
+      "text": "invaribly-sir or Madam",
+      "note": "source spelling/hyphenation",
+      "pages": [
+        47
+      ]
+    },
+    {
+      "text": "L. No.4646 (13)-L.R.",
+      "note": "reference string as printed",
+      "pages": [
+        298
+      ]
+    },
+    {
+      "text": "labelling to books",
+      "note": "source wording (not 'of books')",
+      "pages": [
+        143
+      ]
+    },
+    {
+      "text": "naye paise",
+      "note": "currency spelling as printed",
+      "pages": [
+        169
+      ]
+    },
+    {
+      "text": "no ensure economy",
+      "note": "garbled clause, reproduced as printed",
+      "pages": [
+        47
+      ]
+    },
+    {
+      "text": "Non- Gazetted",
+      "note": "space after hyphen as printed",
+      "pages": [
+        182
+      ]
+    },
+    {
+      "text": "O. F.A. Act",
+      "note": "spacing as printed",
+      "pages": [
+        298
+      ]
+    },
+    {
+      "text": "O.T.C. Vol. I. Rule 618",
+      "note": "reference string as printed",
+      "pages": [
+        298
+      ]
+    },
+    {
+      "text": "perquisite",
+      "note": "printed where 'prerequisite' is meant",
+      "pages": [
+        91
+      ]
+    },
+    {
+      "text": "Reg. 2...",
+      "note": "partial register no.; trailing dots verbatim",
+      "pages": [
+        298
+      ]
+    },
+    {
+      "text": "Reg. 25...",
+      "note": "partial register no.; trailing dots verbatim",
+      "pages": [
+        298
+      ]
+    },
+    {
+      "text": "Reg. 58...",
+      "note": "partial register no.; trailing dots verbatim",
+      "pages": [
+        298
+      ]
+    },
+    {
+      "text": "Sub-ordinate",
+      "note": "hyphenation as printed",
+      "pages": [
+        91
+      ]
+    }
+  ],
+  "corrections": [
+    {
+      "wrong": "centrally,leaving",
+      "right": "centrally, leaving",
+      "note": "missing space after comma",
+      "pages": [
+        91
+      ]
+    },
+    {
+      "wrong": "transferred  must",
+      "right": "transferred must",
+      "note": "double space collapsed",
+      "pages": [
+        91
+      ]
+    }
+  ]
+}

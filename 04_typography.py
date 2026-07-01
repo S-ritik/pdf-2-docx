@@ -7,16 +7,16 @@ source's real type metrics so the assembler (Stage E) can match them:
   - LEADING  : row projection profile -> median baseline-to-baseline
   - SIZE     : x-height of the dense lowercase zone / face x-height ratio
   - MARGINS  : text-block bounding box on the page
-  - FACE     : serif vs sans-serif, classified by a Groq vision model on a
-               zoomed swatch (offline fallback: a stroke-contrast heuristic)
+  - FACE     : serif vs sans-serif, classified by the configured vision model on
+               a zoomed swatch (offline fallback: a stroke-contrast heuristic)
 
 Runs BEFORE assembly so the build uses the right face/size from the start
 (the original session measured after a first build; measuring first is the clean
 generalisation and yields the same matched result).
 
-    GROQ_VISION_MODEL    (default: meta-llama/llama-4-scout-17b-16e-instruct)  # face ID only
-    GROQ_API_KEY         (required for face ID; falls back to a heuristic if unset)
+    LLM_PROVIDER         groq | ollama          # vision model used for face ID
     TYPO_FONT_OVERRIDE   (optional: force e.g. "Arial" / "Times New Roman")
+    PAGE_FROM / PAGE_TO  (optional: measure only within this 1-based page range)
 
 Usage:
     python3 04_typography.py SOURCE.pdf [--workdir work] [--measure-dpi 300]
@@ -126,37 +126,23 @@ def serif_heuristic(ink):
     return "Times New Roman" if cv > 0.95 else "Arial"
 
 
-def classify_face(doc, dpi):
-    """Return a font family name. Prefer a Groq vision call; fall back to heuristic."""
+def classify_face(doc, dpi, mid):
+    """Return a font family name. Prefer a vision-model call; fall back to heuristic."""
     override = os.environ.get("TYPO_FONT_OVERRIDE")
     if override:
         return override, "override"
-    # crop a body swatch from a middle page
-    mid = doc.page_count // 2
+    # crop a body swatch from a representative interior page
     pix = doc[mid].get_pixmap(matrix=fitz.Matrix(dpi / 72, dpi / 72))
     im = Image.open(io.BytesIO(pix.tobytes("png")))
     W, Hh = im.size
     swatch_path = "typo_swatch.png"
     im.crop((int(W * 0.12), int(Hh * 0.30), int(W * 0.88), int(Hh * 0.42))).save(swatch_path)
     try:
-        from groq import Groq
-        api_key = os.environ.get("GROQ_API_KEY")
-        if not api_key:
-            raise RuntimeError("GROQ_API_KEY not set")
-        client = Groq(api_key=api_key)
-        model = os.environ.get("GROQ_VISION_MODEL", "meta-llama/llama-4-scout-17b-16e-instruct")
-        with open(swatch_path, "rb") as f:
-            data_uri = "data:image/png;base64," + base64.b64encode(f.read()).decode("ascii")
-        resp = client.chat.completions.create(model=model, temperature=0, max_tokens=4, messages=[{
-            "role": "user",
-            "content": [
-                {"type": "text",
-                 "text": "Classify the body typeface in this image. Look at the stroke ends: "
-                         "small finishing feet/serifs = serif; clean blunt ends = sans-serif. "
-                         "Reply with exactly one word: serif or sans-serif."},
-                {"type": "image_url", "image_url": {"url": data_uri}},
-            ]}])
-        ans = resp.choices[0].message.content.strip().lower()
+        ans = llm.chat_vision(
+            "Classify the body typeface in this image. Look at the stroke ends: "
+            "small finishing feet/serifs = serif; clean blunt ends = sans-serif. "
+            "Reply with exactly one word: serif or sans-serif.",
+            swatch_path, tier="cheap", temperature=0, max_tokens=4).strip().lower()
         if "sans" in ans:
             return "Arial", "vlm"
         if "serif" in ans:
@@ -178,11 +164,20 @@ def main():
     dpi = args.measure_dpi
     N = doc.page_count
 
-    # sample interior pages (skip outer 15% — covers/titles/letter pages)
-    lo, hi = max(1, int(N * 0.15)), max(2, int(N * 0.85))
-    sample = list(range(lo, hi))
+    # restrict to the selected page range (1-based, inclusive; blank -> whole doc)
+    sel_lo = (env_page("PAGE_FROM") or 1) - 1
+    sel_hi = (env_page("PAGE_TO") or N) - 1
+    sel_lo = max(0, min(sel_lo, N - 1))
+    sel_hi = max(sel_lo, min(sel_hi, N - 1))
+    span = sel_hi - sel_lo + 1
+
+    # sample interior pages within the selection (skip its outer 15% — covers/titles)
+    lo = sel_lo + max(0, int(span * 0.15))
+    hi = sel_lo + max(1, int(span * 0.85))
+    sample = list(range(lo, hi)) or [sel_lo + span // 2]
     if len(sample) > 10:
         sample = [sample[i] for i in np.linspace(0, len(sample) - 1, 10).astype(int)]
+    mid = sel_lo + span // 2
 
     rows = [measure_page(*page_ink(doc, i, dpi), dpi) for i in sample]
     rows = [r for r in rows if r]
@@ -195,7 +190,7 @@ def main():
     top = float(np.median([r["top"] for r in rows]))
     bottom = float(np.median([r["bottom"] for r in rows]))
 
-    face, how = classify_face(doc, dpi)
+    face, how = classify_face(doc, dpi, mid)
     ratio = XHEIGHT_RATIO.get(face, XHEIGHT_RATIO["_default"])
     size_pt = xheight / ratio
     # round to nearest 0.5pt (typesetting granularity)
@@ -214,6 +209,7 @@ def main():
             "left": int(round(left * 20)), "right": int(round(right * 20)),
         },
         "measured_from_pages": sample,
+        "page_range": [sel_lo + 1, sel_hi + 1],
         "measure_dpi": dpi,
         "note": "size from x-height; leading from projection profile; face via " + how,
     }
