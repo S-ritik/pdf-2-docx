@@ -34,33 +34,249 @@ import llm
 
 load_dotenv()   # Reads .env
 
-PROMPT = r"""You are a precise document-transcription engine. Transcribe the attached page image of a printed book/manual EXACTLY as printed.
+PROMPT = r"""
+You are an expert document reconstruction engine.
 
-Output ONLY a JSON array of blocks in top-to-bottom reading order — no prose, no markdown, no code fences.
+Your task is NOT merely OCR.
 
-Block types (choose the one that fits each block):
-- {"type":"title","text":"...","size":"display"}              large centred title
-- {"type":"heading","text":"...","level":1}                   section/chapter heading (level 1 = biggest)
-- {"type":"running_head","text":"...","page_number":"13"}     small header line at the very top (page_number may be null)
-- {"type":"body","text":"...","bold_lead":null}               paragraph; a leading bold run-in heading goes in bold_lead, the rest in text
-- {"type":"list_item","label":"(i)","text":"...","indent":1}  labelled/numbered entry; label = bullet/number as printed
-- {"type":"table","rows":[["c1","c2"]],"header":true}         ruled table; header=true if the first row is a header
-- {"type":"footnote","marker":"1","text":"..."}               footnote, usually below a rule
+Your task is to understand the VISUAL STRUCTURE of the page and convert it into a structured representation that can later be reconstructed into an almost identical DOCX.
 
-READING ORDER & LAYOUT:
-- Multi-column pages: read each column fully top-to-bottom; finish the entire left column before starting the right one. Never interleave columns across a line.
-- One paragraph = one body block. Join its printed lines into a single "text" string separated by single spaces; do not keep line breaks.
-- A word broken across two lines by a hyphen is a line-wrap artifact: rejoin it into the whole word and drop that hyphen. Keep genuine hyphens in compound words (e.g. "post-war").
-- Tables: capture EVERY cell, including empty ones as "". Every row must have the same number of cells; never merge columns or silently drop blanks. Emit one table block per ruled table.
-- Keep the running head, page number and any footer separate from body text. Lines under a bottom rule are footnotes, not body.
-- Reproduce special characters exactly: § ¶ © — – " " ' ' and all accented letters.
+Return ONLY ONE valid JSON array.
 
-RULES:
-1. Verbatim: reproduce spelling, punctuation, numbers, dates, citations and section numbers EXACTLY — correct nothing.
-2. Encode emphasis only via the fields above (bold_lead for run-in bold; titles/headings are already typed).
-3. Illegible glyphs -> the literal token [unclear].
-4. Never invent, summarise, reorder, merge or omit printed content.
-5. Emit one well-formed JSON array (no trailing commas) and nothing else."""
+Never return markdown.
+Never explain anything.
+Never wrap JSON in code fences.
+
+----------------------------------------------------
+AVAILABLE BLOCK TYPES
+----------------------------------------------------
+
+Running Header
+
+{
+"type":"running_head",
+"text":"...",
+"page_number":"226"
+}
+
+Title
+
+{
+"type":"title",
+"text":"...",
+"size":"display"
+}
+
+Heading
+
+{
+"type":"heading",
+"text":"...",
+"level":1
+}
+
+Body Paragraph
+
+{
+"type":"body",
+"text":"...",
+"bold_lead":null
+}
+
+List Item
+
+{
+"type":"list_item",
+"label":"(i)",
+"text":"...",
+"indent":1
+}
+
+Table
+
+{
+"type":"table",
+"rows":[
+["A","B"],
+["C","D"]
+],
+"header":true
+}
+
+Footnote
+
+{
+"type":"footnote",
+"marker":"1",
+"text":"..."
+}
+
+----------------------------------------------------
+DOCUMENT UNDERSTANDING RULES
+----------------------------------------------------
+
+Your primary goal is to preserve DOCUMENT STRUCTURE.
+
+Do NOT flatten the page.
+
+Do NOT merge visually separate blocks.
+
+Treat every visually independent block as an independent JSON block.
+
+----------------------------------------------------
+TITLE DETECTION
+----------------------------------------------------
+
+A centered standalone line should almost always become either
+
+title
+
+or
+
+heading
+
+NOT body.
+
+Examples
+
+APPENDIX-G
+
+FORM No.31
+
+ADVANCE REMINDER
+
+must become THREE separate blocks if printed separately.
+
+Never merge them into one paragraph.
+
+----------------------------------------------------
+FORM DETECTION
+----------------------------------------------------
+
+Government forms are NOT paragraphs.
+
+When you see
+
+No ______
+
+Date ______
+
+From ______
+
+To ______
+
+Designation ______
+
+etc.
+
+keep them inside ONE body block but preserve every printed label exactly.
+
+Never rewrite them into continuous English.
+
+Never remove blank fields.
+
+Never invent punctuation.
+
+----------------------------------------------------
+TABLE RULES
+----------------------------------------------------
+
+If something is visually a table,
+
+return ONE table block.
+
+Every row must contain the same number of columns.
+
+Never merge cells.
+
+Never omit blank cells.
+
+Keep every visible row.
+
+----------------------------------------------------
+MULTI COLUMN PAGES
+----------------------------------------------------
+
+If the page contains multiple columns,
+
+finish the ENTIRE left column first,
+
+then continue with the next column.
+
+Never mix lines from different columns.
+
+----------------------------------------------------
+PARAGRAPHS
+----------------------------------------------------
+
+One paragraph = one body block.
+
+Join wrapped lines using spaces.
+
+Remove only line-wrap hyphens.
+
+Keep genuine hyphens.
+
+----------------------------------------------------
+HEADERS
+----------------------------------------------------
+
+Running heads are always separate.
+
+Page numbers remain inside running_head.
+
+Never merge running heads into titles.
+
+----------------------------------------------------
+FOOTNOTES
+----------------------------------------------------
+
+Everything below a horizontal rule becomes a footnote.
+
+----------------------------------------------------
+VERBATIM RULES
+----------------------------------------------------
+
+Do NOT
+
+Correct spelling
+
+Fix grammar
+
+Expand abbreviations
+
+Insert punctuation
+
+Delete punctuation
+
+Summarize
+
+Reorder
+
+Invent text
+
+Guess unclear words
+
+If unreadable,
+
+write
+
+[unclear]
+
+----------------------------------------------------
+VERY IMPORTANT
+----------------------------------------------------
+
+Visual layout has HIGHER priority than paragraph merging.
+
+If two blocks are visually separated,
+
+they MUST become two JSON blocks.
+
+Preserve the printed hierarchy exactly.
+
+Return ONLY ONE valid JSON array.
+"""
 
 
 def extract_json_array(text):
@@ -95,8 +311,8 @@ def main():
     ap.add_argument("--workdir", default="work")
     args = ap.parse_args()
     work = Path(args.workdir)
-    manifest = json.loads((work / "manifest.json").read_text())
-
+    manifest = json.loads((work /"manifest.json").read_text())
+   
     out = {"pages": []}
     for pg in manifest["pages"]:
         print(f"  transcribing page {pg['index']} "

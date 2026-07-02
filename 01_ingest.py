@@ -41,15 +41,18 @@ def main():
     pages_dir.mkdir(parents=True, exist_ok=True)
 
     doc = fitz.open(src)
+     
+     
     zoom = args.dpi / 72.0
     pages_meta = []
     text_pages = 0
 
     for i in range(doc.page_count):
         page = doc[i]
+         
         rect = page.rect
         # text-layer probe: born-digital pages return real text here, scans return ''
-        has_text = len(page.get_text().strip()) > 0
+        has_text = len(page.get_text().strip()) > 0              #boolean yes or no
         text_pages += int(has_text)
 
         pix = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom))
@@ -57,23 +60,24 @@ def main():
         pix.save(img_path)
 
         pages_meta.append({
-            "index": i + 1,
-            "image": str(img_path),
+            "index": i + 1,                 #This is a dictionary. Think of it like a Java object with named fields.
+            "image": str(img_path),         # Each key stores information about one page "image" → PNG file path
             "width_pt": round(rect.width, 2),
             "height_pt": round(rect.height, 2),
             "has_text_layer": has_text,
-        })
+        }) 
+
         print(f"  page {i+1:>3}/{doc.page_count}  {rect.width:.0f}x{rect.height:.0f}pt  "
               f"text_layer={'yes' if has_text else 'no'}")
 
     # page geometry for the document is taken from page 1 (assume uniform; common for books)
     manifest = {
         "source": str(src),
-        "page_count": doc.page_count,
-        "dpi": args.dpi,
+        "page_count": doc.page_count,            
+        "dpi": args.dpi,                           
         "page_w_pt": pages_meta[0]["width_pt"],
         "page_h_pt": pages_meta[0]["height_pt"],
-        "has_text_layer": text_pages > doc.page_count // 2,  # majority vote
+        "has_text_layer": text_pages > doc.page_count // 2,  # majority vote floor divison  
         "pages": pages_meta,
     }
     (work / "manifest.json").write_text(json.dumps(manifest, indent=2))

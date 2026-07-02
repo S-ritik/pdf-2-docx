@@ -1,0 +1,17 @@
+# Environment variables
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Generated outputs
+out/
+work/
+
+# Test PDFs
+test.pdf
+oops.pdf
+
+# Personal PDFs
+THE ODISHA RECORDS MANUAL.pdf
